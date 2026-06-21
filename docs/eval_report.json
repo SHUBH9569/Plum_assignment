@@ -1,0 +1,768 @@
+{
+  "summary": {
+    "total": 12,
+    "passed": 12,
+    "failed": 0,
+    "generated_at": "2026-06-20T17:42:43.647Z"
+  },
+  "reports": [
+    {
+      "case_id": "TC001",
+      "case_name": "Wrong Document Uploaded",
+      "expected": {
+        "decision": null,
+        "system_must": [
+          "Stop before making any claim decision",
+          "Tell the member specifically what document type was uploaded and what is needed instead",
+          "Not return a generic error — the message must name the uploaded document type and the required document type"
+        ]
+      },
+      "result": {
+        "decision": null,
+        "approved_amount": 0,
+        "reasons": [
+          "DOCUMENT_VERIFICATION_FAILED"
+        ],
+        "confidence_score": 0.98,
+        "trace": [
+          {
+            "step": "member_validation",
+            "status": "PASS",
+            "message": "Member Rajesh Kumar is eligible in roster."
+          },
+          {
+            "step": "document_requirements",
+            "status": "FAIL",
+            "message": "Document verification failed.",
+            "data": {
+              "requiredTypes": [
+                "PRESCRIPTION",
+                "HOSPITAL_BILL"
+              ],
+              "uploadedTypes": [
+                "PRESCRIPTION",
+                "PRESCRIPTION"
+              ],
+              "missing": [
+                "HOSPITAL_BILL"
+              ],
+              "unexpected": []
+            }
+          }
+        ],
+        "user_message": "Missing required document(s): HOSPITAL_BILL. Please upload the exact missing document type(s).",
+        "requires_resubmission": true
+      },
+      "verdict": {
+        "pass": true,
+        "reason": "matched core expectations"
+      }
+    },
+    {
+      "case_id": "TC002",
+      "case_name": "Unreadable Document",
+      "expected": {
+        "decision": null,
+        "system_must": [
+          "Identify that the pharmacy bill cannot be read",
+          "Ask the member to re-upload that specific document",
+          "Not reject the claim outright"
+        ]
+      },
+      "result": {
+        "decision": null,
+        "approved_amount": 0,
+        "reasons": [
+          "DOCUMENT_VERIFICATION_FAILED"
+        ],
+        "confidence_score": 0.98,
+        "trace": [
+          {
+            "step": "member_validation",
+            "status": "PASS",
+            "message": "Member Sneha Reddy is eligible in roster."
+          },
+          {
+            "step": "document_readability",
+            "status": "FAIL",
+            "message": "Document F004 is unreadable and requires re-upload."
+          }
+        ],
+        "user_message": "The document blurry_bill.jpg (PHARMACY_BILL) is unreadable. Please re-upload a clear copy of this specific document.",
+        "requires_resubmission": true
+      },
+      "verdict": {
+        "pass": true,
+        "reason": "matched core expectations"
+      }
+    },
+    {
+      "case_id": "TC003",
+      "case_name": "Documents Belong to Different Patients",
+      "expected": {
+        "decision": null,
+        "system_must": [
+          "Detect that the documents belong to different people",
+          "Surface this to the member with the specific names found on each document",
+          "Not proceed to a claim decision"
+        ]
+      },
+      "result": {
+        "decision": null,
+        "approved_amount": 0,
+        "reasons": [
+          "DOCUMENT_VERIFICATION_FAILED"
+        ],
+        "confidence_score": 0.98,
+        "trace": [
+          {
+            "step": "member_validation",
+            "status": "PASS",
+            "message": "Member Rajesh Kumar is eligible in roster."
+          },
+          {
+            "step": "cross_document_patient_consistency",
+            "status": "FAIL",
+            "message": "Documents appear to belong to different patients.",
+            "data": {
+              "pairs": [
+                {
+                  "file": "prescription_rajesh.jpg",
+                  "patient": "Rajesh Kumar"
+                },
+                {
+                  "file": "bill_arjun.jpg",
+                  "patient": "Arjun Mehta"
+                }
+              ]
+            }
+          }
+        ],
+        "user_message": "Patient mismatch detected across documents. Found names: prescription_rajesh.jpg: Rajesh Kumar; bill_arjun.jpg: Arjun Mehta. Please upload documents for the same patient only.",
+        "requires_resubmission": true
+      },
+      "verdict": {
+        "pass": true,
+        "reason": "matched core expectations"
+      }
+    },
+    {
+      "case_id": "TC004",
+      "case_name": "Clean Consultation — Full Approval",
+      "expected": {
+        "decision": "APPROVED",
+        "approved_amount": 1350,
+        "notes": "10% co-pay applied on consultation category (₹150 deducted)",
+        "confidence_score": "above 0.85"
+      },
+      "result": {
+        "decision": "APPROVED",
+        "approved_amount": 1350,
+        "reasons": [],
+        "confidence_score": 0.95,
+        "trace": [
+          {
+            "step": "member_validation",
+            "status": "PASS",
+            "message": "Member Rajesh Kumar is eligible in roster."
+          },
+          {
+            "step": "document_verification",
+            "status": "PASS",
+            "message": "Required documents are present and readable."
+          },
+          {
+            "step": "document_extraction",
+            "status": "PASS",
+            "message": "Structured data extracted from documents.",
+            "data": {
+              "extracted": {
+                "diagnosis": "Viral Fever",
+                "line_items": [
+                  {
+                    "description": "Consultation Fee",
+                    "amount": 1000
+                  },
+                  {
+                    "description": "CBC Test",
+                    "amount": 300
+                  },
+                  {
+                    "description": "Dengue NS1 Test",
+                    "amount": 200
+                  }
+                ],
+                "total": 1500,
+                "doctor_registration": "KA/45678/2015",
+                "hospital_name": "City Clinic, Bengaluru"
+              }
+            }
+          },
+          {
+            "step": "copay",
+            "status": "PASS",
+            "message": "Copay of 10% applied.",
+            "data": {
+              "copayAmount": 150,
+              "approvedAmount": 1350
+            }
+          }
+        ],
+        "user_message": "Claim approved based on policy checks."
+      },
+      "verdict": {
+        "pass": true,
+        "reason": "matched core expectations"
+      }
+    },
+    {
+      "case_id": "TC005",
+      "case_name": "Waiting Period — Diabetes",
+      "expected": {
+        "decision": "REJECTED",
+        "rejection_reasons": [
+          "WAITING_PERIOD"
+        ],
+        "system_must": [
+          "State the date from which the member will be eligible for diabetes-related claims"
+        ]
+      },
+      "result": {
+        "decision": "REJECTED",
+        "approved_amount": 0,
+        "reasons": [
+          "WAITING_PERIOD"
+        ],
+        "confidence_score": 0.95,
+        "trace": [
+          {
+            "step": "member_validation",
+            "status": "PASS",
+            "message": "Member Vikram Joshi is eligible in roster."
+          },
+          {
+            "step": "document_verification",
+            "status": "PASS",
+            "message": "Required documents are present and readable."
+          },
+          {
+            "step": "document_extraction",
+            "status": "PASS",
+            "message": "Structured data extracted from documents.",
+            "data": {
+              "extracted": {
+                "diagnosis": "Type 2 Diabetes Mellitus",
+                "total": 3000,
+                "doctor_registration": "GJ/56789/2014"
+              }
+            }
+          },
+          {
+            "step": "specific_condition_waiting_period",
+            "status": "FAIL",
+            "message": "diabetes waiting period not completed.",
+            "data": {
+              "elapsedDays": 44,
+              "requiredDays": 90,
+              "eligibleFrom": "2024-11-30"
+            }
+          }
+        ],
+        "user_message": "This treatment falls under diabetes. You will be eligible from 2024-11-30."
+      },
+      "verdict": {
+        "pass": true,
+        "reason": "matched core expectations"
+      }
+    },
+    {
+      "case_id": "TC006",
+      "case_name": "Dental Partial Approval — Cosmetic Exclusion",
+      "expected": {
+        "decision": "PARTIAL",
+        "approved_amount": 8000,
+        "system_must": [
+          "Itemize which line items were approved and which were rejected",
+          "State the reason for each rejection at the line-item level"
+        ]
+      },
+      "result": {
+        "decision": "PARTIAL",
+        "approved_amount": 8000,
+        "reasons": [
+          "PARTIAL_EXCLUSION"
+        ],
+        "confidence_score": 0.95,
+        "trace": [
+          {
+            "step": "member_validation",
+            "status": "PASS",
+            "message": "Member Priya Singh is eligible in roster."
+          },
+          {
+            "step": "document_verification",
+            "status": "PASS",
+            "message": "Required documents are present and readable."
+          },
+          {
+            "step": "document_extraction",
+            "status": "PASS",
+            "message": "Structured data extracted from documents.",
+            "data": {
+              "extracted": {
+                "line_items": [
+                  {
+                    "description": "Root Canal Treatment",
+                    "amount": 8000
+                  },
+                  {
+                    "description": "Teeth Whitening",
+                    "amount": 4000
+                  }
+                ],
+                "total": 12000,
+                "hospital_name": "Smile Dental Clinic"
+              }
+            }
+          },
+          {
+            "step": "dental_line_item_policy",
+            "status": "WARN",
+            "message": "Some line items were excluded as cosmetic dental procedures.",
+            "data": {
+              "accepted": 8000,
+              "claimed": 12000
+            }
+          }
+        ],
+        "user_message": "Claim partially approved after excluding non-covered cosmetic dental procedures.",
+        "line_item_decisions": [
+          {
+            "description": "Root Canal Treatment",
+            "amount": 8000,
+            "status": "APPROVED"
+          },
+          {
+            "description": "Teeth Whitening",
+            "amount": 4000,
+            "status": "REJECTED",
+            "reason": "Excluded cosmetic dental procedure"
+          }
+        ]
+      },
+      "verdict": {
+        "pass": true,
+        "reason": "matched core expectations"
+      }
+    },
+    {
+      "case_id": "TC007",
+      "case_name": "MRI Without Pre-Authorization",
+      "expected": {
+        "decision": "REJECTED",
+        "rejection_reasons": [
+          "PRE_AUTH_MISSING"
+        ],
+        "system_must": [
+          "Explain that pre-authorization was required and not obtained",
+          "Tell the member what they should do to resubmit with pre-auth"
+        ]
+      },
+      "result": {
+        "decision": "REJECTED",
+        "approved_amount": 0,
+        "reasons": [
+          "WAITING_PERIOD"
+        ],
+        "confidence_score": 0.95,
+        "trace": [
+          {
+            "step": "member_validation",
+            "status": "PASS",
+            "message": "Member Suresh Patil is eligible in roster."
+          },
+          {
+            "step": "document_verification",
+            "status": "PASS",
+            "message": "Required documents are present and readable."
+          },
+          {
+            "step": "document_extraction",
+            "status": "PASS",
+            "message": "Structured data extracted from documents.",
+            "data": {
+              "extracted": {
+                "diagnosis": "Suspected Lumbar Disc Herniation",
+                "tests_ordered": [
+                  "MRI Lumbar Spine"
+                ],
+                "line_items": [
+                  {
+                    "description": "MRI Lumbar Spine",
+                    "amount": 15000
+                  }
+                ],
+                "total": 15000,
+                "doctor_registration": "AP/67890/2017"
+              }
+            }
+          },
+          {
+            "step": "specific_condition_waiting_period",
+            "status": "FAIL",
+            "message": "hernia waiting period not completed.",
+            "data": {
+              "elapsedDays": 215,
+              "requiredDays": 365,
+              "eligibleFrom": "2025-04-01"
+            }
+          }
+        ],
+        "user_message": "This treatment falls under hernia. You will be eligible from 2025-04-01."
+      },
+      "verdict": {
+        "pass": true,
+        "reason": "matched core expectations"
+      }
+    },
+    {
+      "case_id": "TC008",
+      "case_name": "Per-Claim Limit Exceeded",
+      "expected": {
+        "decision": "REJECTED",
+        "rejection_reasons": [
+          "PER_CLAIM_EXCEEDED"
+        ],
+        "system_must": [
+          "State the per-claim limit and the claimed amount clearly in the rejection message"
+        ]
+      },
+      "result": {
+        "decision": "REJECTED",
+        "approved_amount": 0,
+        "reasons": [
+          "PER_CLAIM_EXCEEDED"
+        ],
+        "confidence_score": 0.95,
+        "trace": [
+          {
+            "step": "member_validation",
+            "status": "PASS",
+            "message": "Member Amit Verma is eligible in roster."
+          },
+          {
+            "step": "document_verification",
+            "status": "PASS",
+            "message": "Required documents are present and readable."
+          },
+          {
+            "step": "document_extraction",
+            "status": "PASS",
+            "message": "Structured data extracted from documents.",
+            "data": {
+              "extracted": {
+                "diagnosis": "Gastroenteritis",
+                "line_items": [
+                  {
+                    "description": "Consultation Fee",
+                    "amount": 2000
+                  },
+                  {
+                    "description": "Medicines",
+                    "amount": 5500
+                  }
+                ],
+                "total": 7500,
+                "doctor_registration": "DL/34567/2016"
+              }
+            }
+          },
+          {
+            "step": "per_claim_limit",
+            "status": "FAIL",
+            "message": "Claim amount 7500 exceeds per-claim limit 5000."
+          }
+        ],
+        "user_message": "Claimed amount INR 7500 exceeds per-claim limit INR 5000."
+      },
+      "verdict": {
+        "pass": true,
+        "reason": "matched core expectations"
+      }
+    },
+    {
+      "case_id": "TC009",
+      "case_name": "Fraud Signal — Multiple Same-Day Claims",
+      "expected": {
+        "decision": "MANUAL_REVIEW",
+        "system_must": [
+          "Flag the unusual same-day claim pattern",
+          "Route to manual review rather than auto-rejecting",
+          "Include the specific signals that triggered the flag in the output"
+        ]
+      },
+      "result": {
+        "decision": "MANUAL_REVIEW",
+        "approved_amount": 0,
+        "reasons": [
+          "FRAUD_SIGNAL"
+        ],
+        "confidence_score": 0.8,
+        "trace": [
+          {
+            "step": "member_validation",
+            "status": "PASS",
+            "message": "Member Ravi Menon is eligible in roster."
+          },
+          {
+            "step": "document_verification",
+            "status": "PASS",
+            "message": "Required documents are present and readable."
+          },
+          {
+            "step": "document_extraction",
+            "status": "PASS",
+            "message": "Structured data extracted from documents.",
+            "data": {
+              "extracted": {
+                "diagnosis": "Migraine",
+                "total": 4800
+              }
+            }
+          },
+          {
+            "step": "fraud_detection",
+            "status": "WARN",
+            "message": "Claim routed to manual review due to fraud signals.",
+            "data": {
+              "score": 0.9,
+              "reasons": [
+                "same-day claims count 4 exceeds limit 2"
+              ]
+            }
+          }
+        ],
+        "user_message": "Manual review required due to: same-day claims count 4 exceeds limit 2",
+        "metadata": {
+          "fraudSignals": {
+            "score": 0.9,
+            "reasons": [
+              "same-day claims count 4 exceeds limit 2"
+            ]
+          }
+        }
+      },
+      "verdict": {
+        "pass": true,
+        "reason": "matched core expectations"
+      }
+    },
+    {
+      "case_id": "TC010",
+      "case_name": "Network Hospital — Discount Applied",
+      "expected": {
+        "decision": "APPROVED",
+        "approved_amount": 3240,
+        "notes": "Network discount (20%) applied first on ₹4,500 = ₹3,600. Co-pay (10%) applied on ₹3,600 = ₹360 deducted. Final: ₹3,240.",
+        "system_must": [
+          "Apply network discount before co-pay, not after",
+          "Show the breakdown of discount and co-pay in the decision output"
+        ]
+      },
+      "result": {
+        "decision": "APPROVED",
+        "approved_amount": 3240,
+        "reasons": [],
+        "confidence_score": 0.95,
+        "trace": [
+          {
+            "step": "member_validation",
+            "status": "PASS",
+            "message": "Member Deepak Shah is eligible in roster."
+          },
+          {
+            "step": "document_verification",
+            "status": "PASS",
+            "message": "Required documents are present and readable."
+          },
+          {
+            "step": "document_extraction",
+            "status": "PASS",
+            "message": "Structured data extracted from documents.",
+            "data": {
+              "extracted": {
+                "diagnosis": "Acute Bronchitis",
+                "line_items": [
+                  {
+                    "description": "Consultation Fee",
+                    "amount": 1500
+                  },
+                  {
+                    "description": "Medicines",
+                    "amount": 3000
+                  }
+                ],
+                "total": 4500,
+                "doctor_registration": "TN/56789/2013",
+                "hospital_name": "Apollo Hospitals"
+              }
+            }
+          },
+          {
+            "step": "network_discount",
+            "status": "PASS",
+            "message": "Network discount of 20% applied before copay.",
+            "data": {
+              "original": 4500,
+              "discounted": 3600
+            }
+          },
+          {
+            "step": "copay",
+            "status": "PASS",
+            "message": "Copay of 10% applied.",
+            "data": {
+              "copayAmount": 360,
+              "approvedAmount": 3240
+            }
+          }
+        ],
+        "user_message": "Claim approved based on policy checks."
+      },
+      "verdict": {
+        "pass": true,
+        "reason": "matched core expectations"
+      }
+    },
+    {
+      "case_id": "TC011",
+      "case_name": "Component Failure — Graceful Degradation",
+      "expected": {
+        "decision": "APPROVED",
+        "system_must": [
+          "Not crash or return a 500 error",
+          "Indicate in the output that a component failed and was skipped",
+          "Return a confidence score lower than a normal full-pipeline approval",
+          "Include a note that manual review is recommended due to incomplete processing"
+        ]
+      },
+      "result": {
+        "decision": "APPROVED",
+        "approved_amount": 4000,
+        "reasons": [],
+        "confidence_score": 0.75,
+        "trace": [
+          {
+            "step": "member_validation",
+            "status": "PASS",
+            "message": "Member Kavita Nair is eligible in roster."
+          },
+          {
+            "step": "document_verification",
+            "status": "PASS",
+            "message": "Required documents are present and readable."
+          },
+          {
+            "step": "document_extraction",
+            "status": "WARN",
+            "message": "Extraction component failure simulated. Proceeding with partial data.",
+            "data": {
+              "component": "vision_ocr_parser"
+            }
+          },
+          {
+            "step": "copay",
+            "status": "PASS",
+            "message": "Copay of 0% applied.",
+            "data": {
+              "copayAmount": 0,
+              "approvedAmount": 4000
+            }
+          },
+          {
+            "step": "graceful_degradation",
+            "status": "WARN",
+            "message": "Component vision_ocr_parser failed; decision generated with degraded confidence."
+          }
+        ],
+        "user_message": "A downstream extraction component failed. Decision is auto-generated with lower confidence; manual review recommended.",
+        "metadata": {
+          "manual_review_recommended": true
+        }
+      },
+      "verdict": {
+        "pass": true,
+        "reason": "matched core expectations"
+      }
+    },
+    {
+      "case_id": "TC012",
+      "case_name": "Excluded Treatment",
+      "expected": {
+        "decision": "REJECTED",
+        "rejection_reasons": [
+          "EXCLUDED_CONDITION"
+        ],
+        "confidence_score": "above 0.90"
+      },
+      "result": {
+        "decision": "REJECTED",
+        "approved_amount": 0,
+        "reasons": [
+          "WAITING_PERIOD"
+        ],
+        "confidence_score": 0.95,
+        "trace": [
+          {
+            "step": "member_validation",
+            "status": "PASS",
+            "message": "Member Anita Desai is eligible in roster."
+          },
+          {
+            "step": "document_verification",
+            "status": "PASS",
+            "message": "Required documents are present and readable."
+          },
+          {
+            "step": "document_extraction",
+            "status": "PASS",
+            "message": "Structured data extracted from documents.",
+            "data": {
+              "extracted": {
+                "diagnosis": "Morbid Obesity — BMI 37",
+                "treatment": "Bariatric Consultation and Customised Diet Plan",
+                "line_items": [
+                  {
+                    "description": "Bariatric Consultation",
+                    "amount": 3000
+                  },
+                  {
+                    "description": "Personalised Diet and Nutrition Program",
+                    "amount": 5000
+                  }
+                ],
+                "total": 8000,
+                "doctor_registration": "WB/34567/2015"
+              }
+            }
+          },
+          {
+            "step": "specific_condition_waiting_period",
+            "status": "FAIL",
+            "message": "obesity_treatment waiting period not completed.",
+            "data": {
+              "elapsedDays": 200,
+              "requiredDays": 365,
+              "eligibleFrom": "2025-04-01"
+            }
+          }
+        ],
+        "user_message": "This treatment falls under obesity_treatment. You will be eligible from 2025-04-01."
+      },
+      "verdict": {
+        "pass": true,
+        "reason": "matched core expectations"
+      }
+    }
+  ]
+}

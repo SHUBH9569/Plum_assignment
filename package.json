@@ -1,0 +1,14 @@
+{
+  "name": "plum-claims-system",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Production-grade health insurance claims processing system",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "dev:api": "pnpm --filter @plum/api dev",
+    "dev:web": "pnpm --filter @plum/web dev",
+    "build": "pnpm -r build",
+    "test": "pnpm --filter @plum/api test",
+    "eval": "pnpm --filter @plum/api eval"
+  }
+}
