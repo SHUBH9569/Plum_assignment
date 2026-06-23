@@ -302,17 +302,24 @@ export function App() {
 
   const curCase = testCases.find(t => t.case_id === selectedCase);
 
-  // Progress ribbon: find highest pipeline stage reached in liveTrace
+  // Progress ribbon: find highest pipeline stage reached in liveTrace.
+  // Only return 100% when the pipeline actually ran to adjudication (decision !== null).
+  // A blocked claim (decision === null) stops at the stage that failed.
   const progressPct = (() => {
     if (!loading && !result) return 0;
-    if (result) return 100;
+    if (result && result.decision != null) return 100; // != catches both null and undefined
+    // Loading or blocked (decision null/undefined): advance ribbon only up to last agent stage.
+    // Skip "completed" — it fires unconditionally from the route and would force 100% on blocked claims.
     const steps = new Set(liveTrace.map(t => t.step));
     let best = 0;
     for (const stage of PIPELINE_STAGES) {
+      if (stage.key === "completed") continue;
       if (steps.has(stage.key)) best = stage.pct;
     }
     return best || 5;
   })();
+
+  const isBlocked = result != null && result.decision == null; // covers both null and undefined
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -326,14 +333,7 @@ export function App() {
             <div className="nav-tagline">Policy-Driven Adjudication Engine</div>
           </div>
         </div>
-        <div className="nav-right">
-          <div className={`api-pill api-${apiStatus}`}>
-            <span className="api-dot" />
-            {apiStatus === "checking" ? "Connecting…"
-              : apiStatus === "up" ? `Online · ${apiBase.replace("http://", "")}`
-              : "Offline — start pnpm dev:api"}
-          </div>
-        </div>
+        <div className="nav-right" />
       </nav>
 
       {/* ── Main grid ── */}
@@ -623,7 +623,7 @@ export function App() {
             <div className="progress-ribbon">
               <div className="pr-bar-wrap">
                 <div
-                  className={`pr-bar-fill ${result ? "pr-done" : "pr-live"}`}
+                  className={`pr-bar-fill ${isBlocked ? "pr-blocked" : result ? "pr-done" : "pr-live"}`}
                   style={{ width: `${progressPct}%` }}
                 />
               </div>
@@ -631,8 +631,9 @@ export function App() {
                 {PIPELINE_STAGES.filter(s => s.key !== "ai_extract_document").map(stage => {
                   const reached = progressPct >= stage.pct;
                   const active  = progressPct >= stage.pct && progressPct < (PIPELINE_STAGES.find(s2 => s2.pct > stage.pct)?.pct ?? 101);
+                  const failed  = liveTrace.some(t => t.step === stage.key && t.status === "FAIL");
                   return (
-                    <div key={stage.key} className={`pr-stage ${reached ? "pr-stage--done" : ""} ${active && loading ? "pr-stage--active" : ""}`}>
+                    <div key={stage.key} className={`pr-stage ${reached ? "pr-stage--done" : ""} ${active && loading ? "pr-stage--active" : ""} ${failed ? "pr-stage--failed" : ""}`}>
                       <div className="pr-dot" />
                       <div className="pr-stage-label">{stage.label}</div>
                       {active && loading && <div className="pr-pct">{stage.pct}%</div>}
