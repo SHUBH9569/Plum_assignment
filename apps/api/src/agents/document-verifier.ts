@@ -7,6 +7,18 @@ export interface DocumentVerificationResult {
   needs_resubmission?: boolean;
 }
 
+/**
+ * Agent: DocumentVerifier
+ *
+ * Input : ClaimInput + list of policy-required document types
+ * Output: DocumentVerificationResult
+ * Errors: Never throws — returns { ok: false } on any business failure
+ *
+ * Responsibilities:
+ *   1. Confirm all policy-required document types are present
+ *   2. Reject any unreadable document
+ *   3. Detect cross-document patient name mismatches
+ */
 export function verifyDocuments(claim: ClaimInput, requiredTypes: string[]): DocumentVerificationResult {
   const trace: TraceEntry[] = [];
   const uploadedTypes = claim.documents.map((d) => d.actual_type);

@@ -1,24 +1,48 @@
 import type { ClaimInput, DecisionResult, PolicyTerms, TraceEntry } from "../types.js";
-import { addDays, daysBetween } from "../utils/date.js";
-import { rupees } from "../utils/money.js";
-import { verifyDocuments } from "./document-verifier.js";
-import { extractStructuredData } from "./extractor.js";
+import { verifyDocuments } from "../agents/document-verifier.js";
+import { extractStructuredData } from "../agents/extractor.js";
+import { analyzeClaimWithAi } from "../agents/risk-analyzer.js";
+import { adjudicateClaim } from "../agents/policy-adjudicator.js";
 
-const CONDITION_MAP: Array<{ key: string; patterns: string[] }> = [
-  { key: "diabetes", patterns: ["diabetes", "t2dm", "type 2 diabetes"] },
-  { key: "hypertension", patterns: ["hypertension", "htn"] },
-  { key: "thyroid_disorders", patterns: ["thyroid", "hypothyroidism"] },
-  { key: "obesity_treatment", patterns: ["obesity", "bariatric", "weight loss"] },
-  { key: "maternity", patterns: ["maternity", "pregnancy"] },
-  { key: "mental_health", patterns: ["depression", "anxiety", "mental"] },
-  { key: "hernia", patterns: ["hernia"] },
-  { key: "cataract", patterns: ["cataract"] }
-];
+/**
+ * Callback invoked after each agent phase completes, used by streaming routes
+ * to emit live progress events to the client without coupling the engine to HTTP.
+ */
+export type AgentEventFn = (
+  step: string,
+  status: "PASS" | "FAIL" | "WARN" | "INFO",
+  message: string,
+  data?: Record<string, unknown>
+) => void;
 
-export function processClaim(claim: ClaimInput, policy: PolicyTerms): DecisionResult {
+/**
+ * Orchestrator: processClaim
+ *
+ * Coordinates four specialized agents in a gated pipeline:
+ *
+ *   Phase 1 (sequential, fail-fast)
+ *     Agent 1 — DocumentVerifier  : type gate + readability + patient consistency
+ *
+ *   Phase 2 (parallel)
+ *     Agent 2 — Extractor         : structured data extraction from document content
+ *     Agent 3 — RiskAnalyzer      : LLM-powered fraud/risk assessment via Groq
+ *
+ *   Phase 3 (sequential, uses Phase 2 outputs)
+ *     Agent 4 — PolicyAdjudicator : waiting periods, exclusions, pre-auth, fraud,
+ *                                   line-items, network discount, copay → final decision
+ *
+ * The optional `onEvent` callback lets streaming HTTP routes emit live progress
+ * events without any coupling between the engine and the transport layer.
+ */
+export async function processClaim(
+  claim: ClaimInput,
+  policy: PolicyTerms,
+  onEvent?: AgentEventFn
+): Promise<DecisionResult> {
   const trace: TraceEntry[] = [];
   let confidence = 0.95;
 
+  // ── Member validation (not an agent — fast identity check before any agent runs) ──
   const member = policy.members.find((m) => m.member_id === claim.member_id);
   if (!member) {
     return {
@@ -37,18 +61,20 @@ export function processClaim(claim: ClaimInput, policy: PolicyTerms): DecisionRe
       requires_resubmission: true
     };
   }
-
   trace.push({
     step: "member_validation",
     status: "PASS",
     message: `Member ${member.name} is eligible in roster.`
   });
 
+  // ── Phase 1 — Agent 1: Document Verification ──────────────────────────────
+  onEvent?.("agent_document_verify", "INFO", "Verifying uploaded documents against policy requirements.");
   const categoryRules = policy.document_requirements[claim.claim_category];
   const docCheck = verifyDocuments(claim, categoryRules.required);
   trace.push(...docCheck.trace);
 
   if (!docCheck.ok) {
+    onEvent?.("agent_document_verify", "FAIL", docCheck.user_message ?? "Document verification failed.");
     return {
       decision: null,
       approved_amount: 0,
@@ -59,269 +85,56 @@ export function processClaim(claim: ClaimInput, policy: PolicyTerms): DecisionRe
       requires_resubmission: docCheck.needs_resubmission
     };
   }
+  onEvent?.("agent_document_verify", "PASS", "All required documents verified successfully.");
 
-  const extracted = extractStructuredData(claim);
-  trace.push(...extracted.trace);
-  confidence += extracted.confidenceDelta;
+  // ── Phase 2 — Agents 2 & 3: Parallel Execution ───────────────────────────
+  // Extraction is synchronous today (reads in-memory document content fields).
+  // It runs concurrently with the async AI risk analysis so the overall latency
+  // equals max(extraction_time, ai_time) rather than their sum.
+  onEvent?.("agent_extraction", "INFO", `Extracting structured data from ${claim.documents.length} document(s).`);
+  onEvent?.("agent_risk_analysis", "INFO", "Running AI risk analysis in parallel (Groq llama-3.3-70b-versatile).");
 
-  const diagnosisText = String(extracted.extracted.diagnosis ?? extracted.extracted.treatment ?? "").toLowerCase();
+  const [extraction, aiAnalysis] = await Promise.all([
+    Promise.resolve(extractStructuredData(claim)),
+    analyzeClaimWithAi(claim)
+  ]);
 
-  const minimum = policy.submission_rules.minimum_claim_amount;
-  if (claim.claimed_amount < minimum) {
-    trace.push({
-      step: "minimum_claim_amount",
-      status: "FAIL",
-      message: `Claimed amount ${claim.claimed_amount} is below minimum ${minimum}.`
-    });
-    return withDecision("REJECTED", 0, ["BELOW_MINIMUM_CLAIM_AMOUNT"], trace, confidence, {
-      user_message: `Minimum claim amount is INR ${minimum}.`
-    });
-  }
+  trace.push(...extraction.trace);
+  confidence += extraction.confidenceDelta;
+  onEvent?.(
+    "agent_extraction",
+    extraction.failedComponent ? "WARN" : "PASS",
+    extraction.failedComponent
+      ? `Extraction degraded — ${extraction.failedComponent} failed. Proceeding with partial data.`
+      : `Extracted fields from ${claim.documents.length} document(s) successfully.`
+  );
 
-  const memberJoinDate = member.join_date;
-  if (memberJoinDate) {
-    const elapsedDays = daysBetween(claim.treatment_date, memberJoinDate);
-    if (elapsedDays < policy.waiting_periods.initial_waiting_period_days) {
-      trace.push({
-        step: "initial_waiting_period",
-        status: "FAIL",
-        message: `Initial waiting period not completed. Elapsed: ${elapsedDays} days.`
-      });
-
-      return withDecision("REJECTED", 0, ["WAITING_PERIOD"], trace, confidence, {
-        user_message: `Initial waiting period of ${policy.waiting_periods.initial_waiting_period_days} days is not completed.`
-      });
+  trace.push(...aiAnalysis.trace);
+  confidence += aiAnalysis.confidence_adjustment;
+  onEvent?.(
+    "agent_risk_analysis",
+    aiAnalysis.risk_level === "HIGH" ? "WARN" : "PASS",
+    `Risk: ${aiAnalysis.risk_level} · Recommendation: ${aiAnalysis.recommendation} · Provider: ${aiAnalysis.provider}`,
+    {
+      risk_level: aiAnalysis.risk_level,
+      recommendation: aiAnalysis.recommendation,
+      anomalies: aiAnalysis.anomalies,
+      provider: aiAnalysis.provider
     }
+  );
 
-    for (const condition of CONDITION_MAP) {
-      if (condition.patterns.some((p) => diagnosisText.includes(p))) {
-        const waitDays = policy.waiting_periods.specific_conditions[condition.key] ?? 0;
-        if (waitDays > 0 && elapsedDays < waitDays) {
-          const eligibleFrom = addDays(memberJoinDate, waitDays);
-          trace.push({
-            step: "specific_condition_waiting_period",
-            status: "FAIL",
-            message: `${condition.key} waiting period not completed.`,
-            data: { elapsedDays, requiredDays: waitDays, eligibleFrom }
-          });
+  // ── Phase 3 — Agent 4: Policy Adjudication ────────────────────────────────
+  onEvent?.("agent_policy_adjudication", "INFO", "Applying policy rules — waiting periods, exclusions, fraud signals, financials.");
+  const result = adjudicateClaim({ claim, policy, extraction, aiAnalysis, priorTrace: trace, confidence });
 
-          return withDecision("REJECTED", 0, ["WAITING_PERIOD"], trace, confidence, {
-            user_message: `This treatment falls under ${condition.key}. You will be eligible from ${eligibleFrom}.`
-          });
-        }
-      }
-    }
-  }
+  onEvent?.(
+    "agent_policy_adjudication",
+    result.decision === "REJECTED"      ? "FAIL"
+    : result.decision === "MANUAL_REVIEW" ? "WARN"
+    : "PASS",
+    `Decision: ${String(result.decision)} · Approved: ₹${result.approved_amount} · Confidence: ${(result.confidence_score * 100).toFixed(0)}%`,
+    { decision: result.decision, approved_amount: result.approved_amount, reasons: result.reasons }
+  );
 
-  if (
-    diagnosisText.includes("obesity") ||
-    diagnosisText.includes("bariatric") ||
-    diagnosisText.includes("weight loss")
-  ) {
-    trace.push({
-      step: "policy_exclusions",
-      status: "FAIL",
-      message: "Claim falls under excluded condition category."
-    });
-
-    return withDecision("REJECTED", 0, ["EXCLUDED_CONDITION"], trace, confidence, {
-      user_message: "Obesity treatment and bariatric programs are excluded under this policy."
-    });
-  }
-
-  if (claim.claim_category === "DIAGNOSTIC") {
-    const extractedLineItems = Array.isArray(extracted.extracted.line_items)
-      ? extracted.extracted.line_items.map((i) => String((i as Record<string, unknown>).description ?? ""))
-      : [];
-
-    const tests = [...toStringList(extracted.extracted.tests_ordered), ...toStringList(extractedLineItems)]
-      .join(" ")
-      .toLowerCase();
-
-    const diagnosticConfig = policy.opd_categories.diagnostic;
-    const isHighValueMRI =
-      tests.includes("mri") &&
-      claim.claimed_amount > (diagnosticConfig.pre_auth_threshold ?? Number.MAX_SAFE_INTEGER);
-
-    if (isHighValueMRI) {
-      trace.push({
-        step: "pre_authorization",
-        status: "FAIL",
-        message: "Pre-authorization required for high-value MRI claim, but no pre-auth document was found."
-      });
-
-      return withDecision("REJECTED", 0, ["PRE_AUTH_MISSING"], trace, confidence, {
-        user_message:
-          "Pre-authorization is mandatory for MRI claims above INR 10,000. Please resubmit with valid pre-auth approval."
-      });
-    }
-  }
-
-  const fraudSignals = evaluateFraud(claim, policy);
-  if (fraudSignals.score >= policy.fraud_thresholds.fraud_score_manual_review_threshold) {
-    trace.push({
-      step: "fraud_detection",
-      status: "WARN",
-      message: "Claim routed to manual review due to fraud signals.",
-      data: fraudSignals
-    });
-    confidence -= 0.15;
-
-    return withDecision("MANUAL_REVIEW", 0, ["FRAUD_SIGNAL"], trace, confidence, {
-      user_message: `Manual review required due to: ${fraudSignals.reasons.join("; ")}`,
-      metadata: { fraudSignals }
-    });
-  }
-
-  if (claim.claim_category === "CONSULTATION" && claim.claimed_amount > policy.coverage.per_claim_limit) {
-    trace.push({
-      step: "per_claim_limit",
-      status: "FAIL",
-      message: `Claim amount ${claim.claimed_amount} exceeds per-claim limit ${policy.coverage.per_claim_limit}.`
-    });
-
-    return withDecision("REJECTED", 0, ["PER_CLAIM_EXCEEDED"], trace, confidence, {
-      user_message: `Claimed amount INR ${claim.claimed_amount} exceeds per-claim limit INR ${policy.coverage.per_claim_limit}.`
-    });
-  }
-
-  let approvedAmount = claim.claimed_amount;
-  const categoryConfig = policy.opd_categories[claim.claim_category.toLowerCase()];
-
-  const lineItems = toLineItems(extracted.extracted.line_items);
-  const lineItemDecisions: DecisionResult["line_item_decisions"] = [];
-
-  if (claim.claim_category === "DENTAL" && lineItems.length > 0) {
-    let accepted = 0;
-    for (const item of lineItems) {
-      const itemText = item.description.toLowerCase();
-      const isExcluded = (categoryConfig.excluded_procedures ?? []).some((p) => itemText.includes(p.toLowerCase()));
-      if (isExcluded) {
-        lineItemDecisions.push({
-          description: item.description,
-          amount: item.amount,
-          status: "REJECTED",
-          reason: "Excluded cosmetic dental procedure"
-        });
-      } else {
-        accepted += item.amount;
-        lineItemDecisions.push({ description: item.description, amount: item.amount, status: "APPROVED" });
-      }
-    }
-    approvedAmount = accepted;
-
-    if (accepted < claim.claimed_amount) {
-      trace.push({
-        step: "dental_line_item_policy",
-        status: "WARN",
-        message: "Some line items were excluded as cosmetic dental procedures.",
-        data: { accepted, claimed: claim.claimed_amount }
-      });
-
-      return withDecision("PARTIAL", rupees(approvedAmount), ["PARTIAL_EXCLUSION"], trace, confidence, {
-        user_message: "Claim partially approved after excluding non-covered cosmetic dental procedures.",
-        line_item_decisions: lineItemDecisions
-      });
-    }
-  }
-
-  const detectedHospital = String(extracted.extracted.hospital_name ?? claim.hospital_name ?? "");
-  if (detectedHospital && policy.network_hospitals.some((h) => h.toLowerCase() === detectedHospital.toLowerCase())) {
-    const discountPct = categoryConfig.network_discount_percent ?? 0;
-    const discounted = approvedAmount * (1 - discountPct / 100);
-    trace.push({
-      step: "network_discount",
-      status: "PASS",
-      message: `Network discount of ${discountPct}% applied before copay.`,
-      data: { original: approvedAmount, discounted: rupees(discounted) }
-    });
-    approvedAmount = rupees(discounted);
-  }
-
-  const copayPct = categoryConfig.copay_percent ?? 0;
-  const copayAmount = approvedAmount * (copayPct / 100);
-  approvedAmount = rupees(approvedAmount - copayAmount);
-
-  trace.push({
-    step: "copay",
-    status: "PASS",
-    message: `Copay of ${copayPct}% applied.`,
-    data: { copayAmount: rupees(copayAmount), approvedAmount }
-  });
-
-  if (extracted.failedComponent) {
-    trace.push({
-      step: "graceful_degradation",
-      status: "WARN",
-      message: `Component ${extracted.failedComponent} failed; decision generated with degraded confidence.`
-    });
-  }
-
-  const notes = extracted.failedComponent
-    ? "A downstream extraction component failed. Decision is auto-generated with lower confidence; manual review recommended."
-    : "Claim approved based on policy checks.";
-
-  return withDecision("APPROVED", approvedAmount, [], trace, confidence, {
-    user_message: notes,
-    metadata: extracted.failedComponent ? { manual_review_recommended: true } : undefined
-  });
-}
-
-function withDecision(
-  decision: DecisionResult["decision"],
-  approved_amount: number,
-  reasons: string[],
-  trace: TraceEntry[],
-  confidence: number,
-  extras: Partial<DecisionResult> = {}
-): DecisionResult {
-  return {
-    decision,
-    approved_amount,
-    reasons,
-    confidence_score: Math.max(0.3, Math.min(0.99, rupees(confidence))),
-    trace,
-    ...extras
-  };
-}
-
-function evaluateFraud(claim: ClaimInput, policy: PolicyTerms): { score: number; reasons: string[] } {
-  let score = 0;
-  const reasons: string[] = [];
-
-  const sameDayClaims = (claim.claims_history ?? []).filter((h) => h.date === claim.treatment_date).length;
-  if (sameDayClaims > policy.fraud_thresholds.same_day_claims_limit) {
-    score += 0.9;
-    reasons.push(`same-day claims count ${sameDayClaims + 1} exceeds limit ${policy.fraud_thresholds.same_day_claims_limit}`);
-  }
-
-  const monthPrefix = claim.treatment_date.slice(0, 7);
-  const monthlyClaims = (claim.claims_history ?? []).filter((h) => h.date.startsWith(monthPrefix)).length;
-  if (monthlyClaims > policy.fraud_thresholds.monthly_claims_limit) {
-    score += 0.3;
-    reasons.push(`monthly claims count ${monthlyClaims + 1} exceeds limit ${policy.fraud_thresholds.monthly_claims_limit}`);
-  }
-
-  return { score, reasons };
-}
-
-function toLineItems(value: unknown): Array<{ description: string; amount: number }> {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value
-    .map((entry) => {
-      const description = String((entry as Record<string, unknown>).description ?? "").trim();
-      const amount = Number((entry as Record<string, unknown>).amount ?? 0);
-      return { description, amount };
-    })
-    .filter((i) => i.description.length > 0 && Number.isFinite(i.amount));
-}
-
-function toStringList(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-  return value.map((v) => String(v));
+  return result;
 }

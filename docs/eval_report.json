@@ -3,7 +3,7 @@
     "total": 12,
     "passed": 12,
     "failed": 0,
-    "generated_at": "2026-06-21T19:59:09.208Z"
+    "generated_at": "2026-06-23T04:50:17.669Z"
   },
   "reports": [
     {
@@ -199,6 +199,11 @@
             }
           },
           {
+            "step": "ai_analysis",
+            "status": "WARN",
+            "message": "No AI provider configured (GROQ_API_KEY / OPENAI_API_KEY missing). Skipping AI analysis — set one in .env to enable."
+          },
+          {
             "step": "copay",
             "status": "PASS",
             "message": "Copay of 10% applied.",
@@ -256,6 +261,11 @@
                 "doctor_registration": "GJ/56789/2014"
               }
             }
+          },
+          {
+            "step": "ai_analysis",
+            "status": "WARN",
+            "message": "No AI provider configured (GROQ_API_KEY / OPENAI_API_KEY missing). Skipping AI analysis — set one in .env to enable."
           },
           {
             "step": "specific_condition_waiting_period",
@@ -324,6 +334,11 @@
                 "hospital_name": "Smile Dental Clinic"
               }
             }
+          },
+          {
+            "step": "ai_analysis",
+            "status": "WARN",
+            "message": "No AI provider configured (GROQ_API_KEY / OPENAI_API_KEY missing). Skipping AI analysis — set one in .env to enable."
           },
           {
             "step": "dental_line_item_policy",
@@ -408,6 +423,11 @@
             }
           },
           {
+            "step": "ai_analysis",
+            "status": "WARN",
+            "message": "No AI provider configured (GROQ_API_KEY / OPENAI_API_KEY missing). Skipping AI analysis — set one in .env to enable."
+          },
+          {
             "step": "specific_condition_waiting_period",
             "status": "FAIL",
             "message": "hernia waiting period not completed.",
@@ -478,6 +498,11 @@
             }
           },
           {
+            "step": "ai_analysis",
+            "status": "WARN",
+            "message": "No AI provider configured (GROQ_API_KEY / OPENAI_API_KEY missing). Skipping AI analysis — set one in .env to enable."
+          },
+          {
             "step": "per_claim_limit",
             "status": "FAIL",
             "message": "Claim amount 7500 exceeds per-claim limit 5000."
@@ -529,6 +554,11 @@
                 "total": 4800
               }
             }
+          },
+          {
+            "step": "ai_analysis",
+            "status": "WARN",
+            "message": "No AI provider configured (GROQ_API_KEY / OPENAI_API_KEY missing). Skipping AI analysis — set one in .env to enable."
           },
           {
             "step": "fraud_detection",
@@ -609,6 +639,11 @@
             }
           },
           {
+            "step": "ai_analysis",
+            "status": "WARN",
+            "message": "No AI provider configured (GROQ_API_KEY / OPENAI_API_KEY missing). Skipping AI analysis — set one in .env to enable."
+          },
+          {
             "step": "network_discount",
             "status": "PASS",
             "message": "Network discount of 20% applied before copay.",
@@ -669,6 +704,11 @@
             "data": {
               "component": "vision_ocr_parser"
             }
+          },
+          {
+            "step": "ai_analysis",
+            "status": "WARN",
+            "message": "No AI provider configured (GROQ_API_KEY / OPENAI_API_KEY missing). Skipping AI analysis — set one in .env to enable."
           },
           {
             "step": "copay",
@@ -745,6 +785,11 @@
                 "doctor_registration": "WB/34567/2015"
               }
             }
+          },
+          {
+            "step": "ai_analysis",
+            "status": "WARN",
+            "message": "No AI provider configured (GROQ_API_KEY / OPENAI_API_KEY missing). Skipping AI analysis — set one in .env to enable."
           },
           {
             "step": "specific_condition_waiting_period",

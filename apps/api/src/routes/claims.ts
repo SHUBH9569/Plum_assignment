@@ -135,7 +135,7 @@ export async function registerClaimRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
-    const result = processClaim(claim, policy);
+    const result = await processClaim(claim, policy);
     return reply.send(result);
   });
 
@@ -156,21 +156,19 @@ export async function registerClaimRoutes(app: FastifyInstance): Promise<void> {
         }
 
         const claim = parsed.data as ClaimInput;
-
-        emit(out, { type: "status", step: "ai_extraction", status: "INFO", message: "JSON mode: using provided structured document fields (no OCR step)." });
-        emit(out, { type: "status", step: "policy_load", status: "INFO", message: "Loading policy terms." });
-
         const policy = loadPolicyTerms();
+
         if (claim.policy_id !== policy.policy_id) {
           emit(out, { type: "error", step: "policy_validation", status: "FAIL", message: `Unknown policy_id ${claim.policy_id}` });
           return;
         }
 
-        emit(out, { type: "status", step: "adjudication", status: "INFO", message: "Running policy adjudication engine." });
+        // Delegate to multi-agent orchestrator; each agent phase fires a live event
+        const result = await processClaim(claim, policy, (step, status, message, data) => {
+          emit(out, { type: "status", step, status, message, data });
+        });
 
-        const result = processClaim(claim, policy);
-
-        emit(out, { type: "status", step: "completed", status: "PASS", message: "Claim processing completed." });
+        emit(out, { type: "status", step: "completed", status: "PASS", message: "All agents completed. Claim processed." });
         emit(out, { type: "final", result });
       } catch (error) {
         emit(out, { type: "error", step: "unexpected_error", status: "FAIL", message: error instanceof Error ? error.message : "Unexpected error." });
@@ -249,7 +247,7 @@ export async function registerClaimRoutes(app: FastifyInstance): Promise<void> {
       return reply.status(400).send({ error: "POLICY_MISMATCH", message: `Unknown policy_id ${claim.policy_id}` });
     }
 
-    return reply.send(enrichResult(processClaim(claim, policy), extractionWarnings, documents));
+    return reply.send(enrichResult(await processClaim(claim, policy), extractionWarnings, documents));
   });
 
   // ── Live streaming — multipart form upload ────────────────────────────────
@@ -341,20 +339,23 @@ export async function registerClaimRoutes(app: FastifyInstance): Promise<void> {
         }
 
         const claim: ClaimInput = { ...parsedBase.data, documents };
-
-        emit(out, { type: "status", step: "policy_load", status: "INFO", message: "Loading policy terms." });
-
         const policy = loadPolicyTerms();
+
         if (claim.policy_id !== policy.policy_id) {
           emit(out, { type: "error", step: "policy_validation", status: "FAIL", message: `Unknown policy_id ${claim.policy_id}` });
           return;
         }
 
-        emit(out, { type: "status", step: "adjudication", status: "INFO", message: "Running policy adjudication engine." });
+        // Delegate to multi-agent orchestrator with live per-agent events
+        const result = enrichResult(
+          await processClaim(claim, policy, (step, status, message, data) => {
+            emit(out, { type: "status", step, status, message, data });
+          }),
+          extractionWarnings,
+          documents
+        );
 
-        const result = enrichResult(processClaim(claim, policy), extractionWarnings, documents);
-
-        emit(out, { type: "status", step: "completed", status: "PASS", message: "Claim processing completed." });
+        emit(out, { type: "status", step: "completed", status: "PASS", message: "All agents completed. Claim processed." });
         emit(out, { type: "final", result });
       } catch (error) {
         emit(out, { type: "error", step: "unexpected_error", status: "FAIL", message: error instanceof Error ? error.message : "Unexpected error." });

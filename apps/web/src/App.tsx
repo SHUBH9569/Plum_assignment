@@ -92,14 +92,18 @@ const TRACE_META: Record<TraceStatus, { icon: string }> = {
 const fmt = (n: number) => `₹${n.toLocaleString("en-IN")}`;
 
 // ─── Pipeline stages for progress ribbon ────────────────────────────────────
+// Keys match the `step` field emitted by the multi-agent orchestrator.
+// Upload-mode adds ai_extraction / ai_extract_document before the agent pipeline.
 const PIPELINE_STAGES: Array<{ key: string; label: string; pct: number }> = [
-  { key: "request_received",    label: "Received",   pct: 10 },
-  { key: "input_validation",   label: "Validated",  pct: 25 },
-  { key: "ai_extraction",      label: "AI Extract", pct: 45 },
-  { key: "ai_extract_document",label: "OCR",        pct: 60 },
-  { key: "policy_load",        label: "Policy",     pct: 70 },
-  { key: "adjudication",       label: "Adjudicate", pct: 85 },
-  { key: "completed",          label: "Complete",   pct: 100 },
+  { key: "request_received",         label: "Received",   pct: 6  },
+  { key: "input_validation",         label: "Validated",  pct: 14 },
+  { key: "ai_extraction",            label: "OCR Start",  pct: 24 }, // upload-mode OCR phase
+  { key: "ai_extract_document",      label: "OCR Doc",    pct: 34 }, // upload-mode per-doc
+  { key: "agent_document_verify",    label: "Doc Check",  pct: 44 }, // Agent 1
+  { key: "agent_extraction",         label: "Extract",    pct: 60 }, // Agent 2 (parallel)
+  { key: "agent_risk_analysis",      label: "AI Risk",    pct: 72 }, // Agent 3 (parallel)
+  { key: "agent_policy_adjudication",label: "Adjudicate", pct: 88 }, // Agent 4
+  { key: "completed",                label: "Complete",   pct: 100 },
 ];
 
 // ─── App ─────────────────────────────────────────────────────────────────────

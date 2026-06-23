@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 describe("decision engine", () => {
-  it("passes expected decision for all provided testcases", () => {
+  it("passes expected decision for all provided testcases", async () => {
     const casesRaw = JSON.parse(readFileSync(path.resolve(__dirname, "../../../../test_cases.json"), "utf-8")) as {
       test_cases: Array<{ input: any; expected: any; case_id: string }>;
     };
@@ -17,7 +17,7 @@ describe("decision engine", () => {
     const policy = loadPolicyTerms();
 
     for (const tc of casesRaw.test_cases) {
-      const result = processClaim(tc.input, policy);
+      const result = await processClaim(tc.input, policy);
       if (tc.expected.decision === null) {
         expect(result.decision, tc.case_id).toBeNull();
       } else {
@@ -26,7 +26,7 @@ describe("decision engine", () => {
     }
   });
 
-  it("applies network discount before copay for TC010 style claim", () => {
+  it("applies network discount before copay for TC010 style claim", async () => {
     const policy = loadPolicyTerms();
     const claim = {
       member_id: "EMP010",
@@ -53,7 +53,7 @@ describe("decision engine", () => {
       ]
     };
 
-    const result = processClaim(claim as any, policy);
+    const result = await processClaim(claim as any, policy);
     expect(result.decision).toBe("APPROVED");
     expect(result.approved_amount).toBe(3240);
   });

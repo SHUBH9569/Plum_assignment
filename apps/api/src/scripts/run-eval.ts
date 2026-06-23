@@ -35,21 +35,23 @@ function checkExpectation(result: any, expected: Record<string, unknown>): { pas
   return { pass: true, reason: "matched core expectations" };
 }
 
-function main(): void {
+async function main(): Promise<void> {
   const casesRaw = JSON.parse(readFileSync(rootPath("test_cases.json"), "utf-8")) as { test_cases: EvaluationCase[] };
   const policy = loadPolicyTerms();
 
-  const reports = casesRaw.test_cases.map((tc) => {
-    const result = processClaim(tc.input, policy);
-    const verdict = checkExpectation(result, tc.expected);
-    return {
-      case_id: tc.case_id,
-      case_name: tc.case_name,
-      expected: tc.expected,
-      result,
-      verdict
-    };
-  });
+  const reports = await Promise.all(
+    casesRaw.test_cases.map(async (tc) => {
+      const result = await processClaim(tc.input, policy);
+      const verdict = checkExpectation(result, tc.expected);
+      return {
+        case_id: tc.case_id,
+        case_name: tc.case_name,
+        expected: tc.expected,
+        result,
+        verdict
+      };
+    })
+  );
 
   const passed = reports.filter((r) => r.verdict.pass).length;
   const summary = {
@@ -86,4 +88,4 @@ function main(): void {
   console.log(`Eval completed. Passed ${summary.passed}/${summary.total}.`);
 }
 
-main();
+main().catch((err) => { console.error(err); process.exit(1); });
