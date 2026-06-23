@@ -3,7 +3,7 @@
     "total": 12,
     "passed": 12,
     "failed": 0,
-    "generated_at": "2026-06-23T04:50:17.669Z"
+    "generated_at": "2026-06-23T15:34:30.495Z"
   },
   "reports": [
     {
@@ -55,7 +55,7 @@
       },
       "verdict": {
         "pass": true,
-        "reason": "matched core expectations"
+        "reason": "decision and amount match expected"
       }
     },
     {
@@ -93,7 +93,7 @@
       },
       "verdict": {
         "pass": true,
-        "reason": "matched core expectations"
+        "reason": "decision and amount match expected"
       }
     },
     {
@@ -143,7 +143,7 @@
       },
       "verdict": {
         "pass": true,
-        "reason": "matched core expectations"
+        "reason": "decision and amount match expected"
       }
     },
     {
@@ -200,8 +200,19 @@
           },
           {
             "step": "ai_analysis",
-            "status": "WARN",
-            "message": "No AI provider configured (GROQ_API_KEY / OPENAI_API_KEY missing). Skipping AI analysis — set one in .env to enable."
+            "status": "PASS",
+            "message": "AI analysis complete via groq. Risk: LOW. Recommendation: APPROVE.",
+            "data": {
+              "provider": "groq",
+              "model": "llama-3.3-70b-versatile",
+              "risk_level": "LOW",
+              "recommendation": "APPROVE",
+              "anomalies": [],
+              "reasoning": "The claimed amount of INR 1500 for a consultation is within the typical range for an Indian OPD consult. The diagnosis of Viral Fever matches the claim category and the doctor's registration is provided. The prescription and hospital bill documents support the claim, and there are no suspicious patterns or red flags detected.",
+              "confidence_adjustment": 0,
+              "normalized_diagnosis": "Viral Fever",
+              "normalized_treatment": "Consultation and Diagnostic Tests"
+            }
           },
           {
             "step": "copay",
@@ -217,7 +228,7 @@
       },
       "verdict": {
         "pass": true,
-        "reason": "matched core expectations"
+        "reason": "decision and amount match expected"
       }
     },
     {
@@ -264,8 +275,19 @@
           },
           {
             "step": "ai_analysis",
-            "status": "WARN",
-            "message": "No AI provider configured (GROQ_API_KEY / OPENAI_API_KEY missing). Skipping AI analysis — set one in .env to enable."
+            "status": "PASS",
+            "message": "AI analysis complete via groq. Risk: LOW. Recommendation: APPROVE.",
+            "data": {
+              "provider": "groq",
+              "model": "llama-3.3-70b-versatile",
+              "risk_level": "LOW",
+              "recommendation": "APPROVE",
+              "anomalies": [],
+              "reasoning": "The claimed amount of INR 3000 for a consultation is within the typical range for an Indian OPD consult. The provided documents include a prescription with a valid doctor registration and a hospital bill that matches the claimed amount. The diagnosis of Type 2 Diabetes Mellitus is consistent with the consultation claim category.",
+              "confidence_adjustment": 0,
+              "normalized_diagnosis": "Type 2 Diabetes Mellitus",
+              "normalized_treatment": "Consultation for Diabetes Management"
+            }
           },
           {
             "step": "specific_condition_waiting_period",
@@ -282,7 +304,7 @@
       },
       "verdict": {
         "pass": true,
-        "reason": "matched core expectations"
+        "reason": "decision and amount match expected"
       }
     },
     {
@@ -302,7 +324,7 @@
         "reasons": [
           "PARTIAL_EXCLUSION"
         ],
-        "confidence_score": 0.95,
+        "confidence_score": 0.75,
         "trace": [
           {
             "step": "member_validation",
@@ -337,8 +359,21 @@
           },
           {
             "step": "ai_analysis",
-            "status": "WARN",
-            "message": "No AI provider configured (GROQ_API_KEY / OPENAI_API_KEY missing). Skipping AI analysis — set one in .env to enable."
+            "status": "PASS",
+            "message": "AI analysis complete via groq. Risk: MEDIUM. Recommendation: MANUAL_REVIEW.",
+            "data": {
+              "provider": "groq",
+              "model": "llama-3.3-70b-versatile",
+              "risk_level": "MEDIUM",
+              "recommendation": "MANUAL_REVIEW",
+              "anomalies": [
+                "Unusually high claimed amount for dental treatment"
+              ],
+              "reasoning": "The claimed amount of INR 12000 for dental treatment seems unusually high, with a root canal treatment and teeth whitening costing INR 8000 and INR 4000 respectively. While these procedures can be costly, the total amount claimed warrants a manual review to verify the legitimacy and reasonableness of the expenses.",
+              "confidence_adjustment": -0.2,
+              "normalized_diagnosis": "Dental Caries",
+              "normalized_treatment": "Root Canal Treatment and Teeth Whitening"
+            }
           },
           {
             "step": "dental_line_item_policy",
@@ -367,7 +402,7 @@
       },
       "verdict": {
         "pass": true,
-        "reason": "matched core expectations"
+        "reason": "decision and amount match expected"
       }
     },
     {
@@ -424,8 +459,19 @@
           },
           {
             "step": "ai_analysis",
-            "status": "WARN",
-            "message": "No AI provider configured (GROQ_API_KEY / OPENAI_API_KEY missing). Skipping AI analysis — set one in .env to enable."
+            "status": "PASS",
+            "message": "AI analysis complete via groq. Risk: LOW. Recommendation: APPROVE.",
+            "data": {
+              "provider": "groq",
+              "model": "llama-3.3-70b-versatile",
+              "risk_level": "LOW",
+              "recommendation": "APPROVE",
+              "anomalies": [],
+              "reasoning": "The claimed amount of INR 15000 for an MRI Lumbar Spine falls within the reasonable range for diagnostic tests in India. The presence of a valid doctor registration and a matching prescription and lab report supports the legitimacy of the claim.",
+              "confidence_adjustment": 0,
+              "normalized_diagnosis": "Lumbar Disc Herniation",
+              "normalized_treatment": "MRI Lumbar Spine"
+            }
           },
           {
             "step": "specific_condition_waiting_period",
@@ -442,7 +488,7 @@
       },
       "verdict": {
         "pass": true,
-        "reason": "matched core expectations"
+        "reason": "decision and amount match expected"
       }
     },
     {
@@ -463,7 +509,7 @@
         "reasons": [
           "PER_CLAIM_EXCEEDED"
         ],
-        "confidence_score": 0.95,
+        "confidence_score": 0.75,
         "trace": [
           {
             "step": "member_validation",
@@ -499,8 +545,21 @@
           },
           {
             "step": "ai_analysis",
-            "status": "WARN",
-            "message": "No AI provider configured (GROQ_API_KEY / OPENAI_API_KEY missing). Skipping AI analysis — set one in .env to enable."
+            "status": "PASS",
+            "message": "AI analysis complete via groq. Risk: MEDIUM. Recommendation: MANUAL_REVIEW.",
+            "data": {
+              "provider": "groq",
+              "model": "llama-3.3-70b-versatile",
+              "risk_level": "MEDIUM",
+              "recommendation": "MANUAL_REVIEW",
+              "anomalies": [
+                "Claimed amount for consultation is higher than typical Indian OPD consult range"
+              ],
+              "reasoning": "The claimed amount of INR 7500 for a consultation seems unusually high for the Indian market, where typical OPD consults range from INR 200 to INR 2000. However, the presence of a valid doctor registration and a clear diagnosis in the prescription document supports the legitimacy of the claim, thus warranting a manual review rather than outright rejection.",
+              "confidence_adjustment": -0.2,
+              "normalized_diagnosis": "Gastroenteritis",
+              "normalized_treatment": "Consultation and medication for Gastroenteritis"
+            }
           },
           {
             "step": "per_claim_limit",
@@ -512,7 +571,7 @@
       },
       "verdict": {
         "pass": true,
-        "reason": "matched core expectations"
+        "reason": "decision and amount match expected"
       }
     },
     {
@@ -557,8 +616,19 @@
           },
           {
             "step": "ai_analysis",
-            "status": "WARN",
-            "message": "No AI provider configured (GROQ_API_KEY / OPENAI_API_KEY missing). Skipping AI analysis — set one in .env to enable."
+            "status": "PASS",
+            "message": "AI analysis complete via groq. Risk: LOW. Recommendation: APPROVE.",
+            "data": {
+              "provider": "groq",
+              "model": "llama-3.3-70b-versatile",
+              "risk_level": "LOW",
+              "recommendation": "APPROVE",
+              "anomalies": [],
+              "reasoning": "The claimed amount of INR 4800 for a consultation is within the typical range for an Indian OPD consult. The diagnosis of Migraine matches the claim category, and the provided documents include a prescription and hospital bill, which supports the legitimacy of the claim.",
+              "confidence_adjustment": 0,
+              "normalized_diagnosis": "Migraine",
+              "normalized_treatment": "Consultation"
+            }
           },
           {
             "step": "fraud_detection",
@@ -584,7 +654,7 @@
       },
       "verdict": {
         "pass": true,
-        "reason": "matched core expectations"
+        "reason": "decision and amount match expected"
       }
     },
     {
@@ -640,8 +710,19 @@
           },
           {
             "step": "ai_analysis",
-            "status": "WARN",
-            "message": "No AI provider configured (GROQ_API_KEY / OPENAI_API_KEY missing). Skipping AI analysis — set one in .env to enable."
+            "status": "PASS",
+            "message": "AI analysis complete via groq. Risk: LOW. Recommendation: APPROVE.",
+            "data": {
+              "provider": "groq",
+              "model": "llama-3.3-70b-versatile",
+              "risk_level": "LOW",
+              "recommendation": "APPROVE",
+              "anomalies": [],
+              "reasoning": "The claimed amount of INR 4500 for a consultation is within the reasonable range for the Indian market. The diagnosis of Acute Bronchitis matches the claim category, and the doctor's registration is provided. The prescription and hospital bill documents are consistent, and the line items in the hospital bill are reasonable.",
+              "confidence_adjustment": 0,
+              "normalized_diagnosis": "Acute Bronchitis",
+              "normalized_treatment": "Consultation and Medication"
+            }
           },
           {
             "step": "network_discount",
@@ -666,7 +747,7 @@
       },
       "verdict": {
         "pass": true,
-        "reason": "matched core expectations"
+        "reason": "decision and amount match expected"
       }
     },
     {
@@ -707,8 +788,21 @@
           },
           {
             "step": "ai_analysis",
-            "status": "WARN",
-            "message": "No AI provider configured (GROQ_API_KEY / OPENAI_API_KEY missing). Skipping AI analysis — set one in .env to enable."
+            "status": "PASS",
+            "message": "AI analysis complete via groq. Risk: MEDIUM. Recommendation: MANUAL_REVIEW.",
+            "data": {
+              "provider": "groq",
+              "model": "llama-3.3-70b-versatile",
+              "risk_level": "MEDIUM",
+              "recommendation": "MANUAL_REVIEW",
+              "anomalies": [
+                "Claimed amount for alternative medicine seems high but within reasonable limits for the treatment described"
+              ],
+              "reasoning": "The claim is for alternative medicine, specifically Panchakarma Therapy, which is a legitimate treatment for chronic joint pain. The claimed amount of INR 4000 is somewhat high but could be justified by the cost of the therapy sessions and consultation. The presence of a prescription with a registered doctor and a detailed hospital bill supports the claim's legitimacy. However, given the nature of alternative medicine and the potential for variability in costs, a manual review is recommended to verify the claim's authenticity and ensure alignment with policy coverage.",
+              "confidence_adjustment": 0,
+              "normalized_diagnosis": "Chronic Joint Pain",
+              "normalized_treatment": "Panchakarma Therapy"
+            }
           },
           {
             "step": "copay",
@@ -732,7 +826,7 @@
       },
       "verdict": {
         "pass": true,
-        "reason": "matched core expectations"
+        "reason": "decision and amount match expected"
       }
     },
     {
@@ -751,7 +845,7 @@
         "reasons": [
           "WAITING_PERIOD"
         ],
-        "confidence_score": 0.95,
+        "confidence_score": 0.75,
         "trace": [
           {
             "step": "member_validation",
@@ -788,8 +882,22 @@
           },
           {
             "step": "ai_analysis",
-            "status": "WARN",
-            "message": "No AI provider configured (GROQ_API_KEY / OPENAI_API_KEY missing). Skipping AI analysis — set one in .env to enable."
+            "status": "PASS",
+            "message": "AI analysis complete via groq. Risk: MEDIUM. Recommendation: MANUAL_REVIEW.",
+            "data": {
+              "provider": "groq",
+              "model": "llama-3.3-70b-versatile",
+              "risk_level": "MEDIUM",
+              "recommendation": "MANUAL_REVIEW",
+              "anomalies": [
+                "Claimed amount is higher than typical Indian OPD consult range",
+                "Personalised Diet and Nutrition Program seems expensive"
+              ],
+              "reasoning": "The claimed amount of INR 8000 for a consultation is higher than the typical range for an Indian OPD consult, and the breakdown includes a costly Personalised Diet and Nutrition Program, which may not be fully covered under the policy. The doctor's registration is provided, and the diagnosis matches the claim category, but the high claimed amount warrants a manual review to verify the legitimacy and policy alignment of the claim.",
+              "confidence_adjustment": -0.2,
+              "normalized_diagnosis": "Obesity, Morbid",
+              "normalized_treatment": "Bariatric Consultation"
+            }
           },
           {
             "step": "specific_condition_waiting_period",
@@ -806,7 +914,7 @@
       },
       "verdict": {
         "pass": true,
-        "reason": "matched core expectations"
+        "reason": "decision and amount match expected"
       }
     }
   ]
